@@ -3,6 +3,8 @@ title: "LiDAR_01"
 author: "Jing-Zhong Lu"
 date: "2025-06-10"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -16,24 +18,630 @@ library(terra)
 library(patchwork)
 library(gstat)
 library(rgl)
+library(sf)
 ```
 
-## R Markdown
+## Materials
+LidR: https://r-lidar.github.io/lidRbook/
+rgl: https://cran.r-project.org/web/packages/rgl/vignettes/rgl.html
+patchwork: https://cran.r-project.org/web/packages/patchwork/vignettes/patchwork.html
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Applications
+* Select field sites for macrofauna ringtest: plotting
+* Vegetation type classification for Global Oribatida: 
+* Conservation evaluation for Soil BON Foodweb
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Concepts
+.laz: compressed version of a LAS file, used to store LiDAR data.
+.shp: vector file format storage developed by ESRI
 
-```{r cars}
-summary(cars)
+## Data
+
+las_area1 and las_area2 as example data file
+
+```{r}
+las <- readLAS("las_area1.laz")
+las
+
+plot(las)
+plot(las@data$X, las@data$Y, col = las@data$Z, pch = 20)
+
+las_check(las) # 1 points are duplicated, which is not bad
+
+las <- readLAS("las_area1.laz", filter = "-drop_z_above 900")
+
+#-keep_first	Keep only the first return of each pulse
+#-keep_last	Keep only the last return
+#-keep_single	Keep returns from pulses with only one return
+#-keep_intermediate	Keep returns that are neither first nor last
+#-drop_first	Exclude first returns
+#-drop_last	Exclude last returns
+#-drop_z_below x
+#-drop_z_above 900 NB is m above sea level
+
+plot(las, bg="white", color="Classification")
+
+las@data$Classification %>% unique
+las %>% str
+las@data %>% str
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+```{r}
+# exercise 2
+#1. reading the point cloud
+#read LAS point cloud
+las<-readLAS("las_area2.laz")
+las#plot the point cloud
+plot(las)#read only x,y,z
+# density: 4.76 pulses/m²  Pulse density (or "pulse rate") This is the number of laser pulses emitted per square meter.Pulses = quanti colpi sparo
+# 8.87 points/m² number of LiDAR returns (points) per square meter. Points = quanti rimbalzi ricevo
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+las_check(las) #check if the point cloud is fine
+
+#2.1 plot the point cloud
+plot(las, bg="white")
+plot(las, color="RGB")#if you have structrue from motion data you can plot in RGB
+plot(las, color="Classification", bg="white", legend=TRUE )#plot specific information of the point cloud e.g. classification 
+plot(las, color="Intensity", bg="white", legend=TRUE ) #plot intensity
+
+plot(las@data$X, las@data$Y, col = las@data$Z, pch = 20)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+#exercise 1
+#open the las2
+#plot the point cloud
+#how is the pulse density?
+#check if the point cloud is fine
+#re-load the point cloud and plot it using only points below  1750
+#plot specific information of the point cloud of the area above 1900m: try to plot the number of returns - never done but you can try! do it with a blue background and adding a legend 
+las2<-readLAS("C:/Users/MicTorresani/OneDrive - Scientific Network South Tyrol/varie/corsi/physalia/LiDAR 2025/data/starting_data/las/area2/DownloadService/las_area2.laz")
+plot(las2)
+las_check(las2)
+las2<-readLAS("C:/Users/MicTorresani/OneDrive - Scientific Network South Tyrol/varie/corsi/physalia/LiDAR 2025/data/starting_data/las/area2/DownloadService/las_area2.laz",filter = "-drop_z_above 1750" ) 
+plot(las2)
+las2<-readLAS("C:/Users/MicTorresani/OneDrive - Scientific Network South Tyrol/varie/corsi/physalia/LiDAR 2025/data/starting_data/las/area2/DownloadService/las_area2.laz",filter = "-drop_z_below 1900" ) 
+plot(las2, color="ReturnNumber", bg="blue", legend=TRUE )
+```
+
+
+```{r}
+#open Qgis
+las<-readLAS("las_area1.laz")
+p1 <- c(679368, 5155974)
+p2 <- c(679468, 5156074)
+transect<-clip_transect(las, p1, p2, width = 5) #plot point cloud transect; width in meters
+
+#transect <- las
+ggplot(payload(transect), aes(X, Z, color=Z))+ #you can plot also other infos color=Intensity, color=Classification... check doing transect$
+  geom_point()+
+  theme_minimal()+
+  scale_color_viridis_c(option="viridis")#clip the las with the shapefile of a given polygon
+
+plot(las)
+```
+
+
+## Homework2
+```{r}
+###
+#exercise 2 to do at home
+#create a transect with the new las2
+#show the Classification of a two given points of transect of 10m
+las2<-readLAS("las_area2.laz" ) 
+p1 <- c(620207, 5156764)
+p2 <- c(620257, 5156764)
+transect<-clip_transect(las2, p1, p2, width = 5) #plot point cloud transect
+
+ggplot(payload(transect), aes(X,Z, color=Z  ) )+
+  geom_point()+
+  theme_minimal()+
+  scale_color_viridis_c(option="viridis")#clip the las with the shapefile of a given polygon
+```
+
+## 2.2 plot clipped areas, circles 
+```{r}
+area_test<-st_read("area_shp_test.shp")
+
+plot(area_test)
+clipped_las <- clip_roi(las, area_test)
+plot(clipped_las)#clip my las with given gps point and given radius
+plot(clipped_las@data$X, clipped_las@data$Y, col = clipped_las@data$Z, pch = 20)
+
+area_circle<-clip_circle(las, x=679368, y=5155974, radius = 50)
+p1 <- c(679368, 5155974)
+p2 <- c(679468, 5156074)
+area_circle<-clip_circle(las, x=p1[1], y=p1[2], radius = 40)
+#plot(area_circle)
+plot(area_circle@data$X, area_circle@data$Y, col = area_circle@data$Z, pch = 20)
+```
+
+## 3.PC classification 
+PC - point cloud
+```{r}
+#3. classification of the point cloud
+#classify point cloud, we use the function classify_ground ()
+#PMF
+classification1 <- classify_ground(las, algorithm = pmf(ws=5, th=3) )
+
+transect<-clip_transect(classification1, p1, p2, width = 5)
+ggplot(payload(transect), aes(X,Z, color=Classification  ) )+
+  geom_point()+
+  ggtitle("pmf")+
+  theme_minimal()+
+  scale_color_viridis_c(option="viridis")
+
+
+ws<-seq(3, 12, 3)
+ws
+th<-seq(0.1, 2, length.out= length(ws))
+
+classification2<-classify_ground(las, algorithm = pmf(ws=ws, th=th) )
+transect<-clip_transect(classification2, p1, p2, width = 5)
+ggplot(payload(transect), aes(X,Z, color=Classification  ) )+
+  geom_point()+
+  ggtitle("pmf_tuned")+
+  theme_minimal()+
+  scale_color_viridis_c(option="viridis")
+
+
+#CSF
+library(RCSF)
+
+classification_csf<-classify_ground(las, algorithm = csf()) #based on Zang et al 2016. # csf does not requires any tuning.
+transect<-clip_transect(classification_csf, p1, p2, width = 5) #we can change the transect width if needed
+ggplot(payload(transect), aes(X, Z, color=Classification  ) )+
+  geom_point()+
+  ggtitle("csf")+
+  theme_minimal()+
+  scale_color_viridis_c(option="viridis")
+```
+
+## DTM - terrain model
+Important for data normalisation
+
+```{r}
+ground <- filter_ground(las)
+str(ground@data)
+plot(ground@data$X, ground@data$Y, col=ground@data$NumberOfReturns, pch=20)
+
+dtm_tin <- rasterize_terrain(las, res = 1, algorithm = tin()) # res in meters | Michele the tutor knows more than five points per m2. 
+# DTM generation: Triangular irregular network; recommended (for forestry)
+# DTM generation: Invert distance weighting; not recommended
+# DTM generation: Krigin - most advanced; for very detail terrain
+
+dtm_tin
+plot_dtm3d(dtm_tin)
+plot(dtm_tin)
+
+# export to QGIS
+raster::writeRaster(dtm_tin, "Data/dtm_tin.tiff")
+
+# dtm with idw
+
+dtm_idw <- rasterize_terrain(las, res = 1, algorithm = knnidw())
+# DTM generation: Invert distance weighting; not recommended
+
+dtm_idw
+plot_dtm3d(dtm_idw)
+raster::plot(dtm_idw)
+plot(dtm_idw)
+
+# export to QGIS
+raster::writeRaster(dtm_idw, "Data/dtm_idw.tiff")
+
+dtm_products <- terrain(dtm_tin, v = c("slope", "aspect"), unit = "degree")
+plot(dtm_products)
+raster::writeRaster(dtm_products$slope, "Data/slope.tiff")
+```
+
+## pointcloud normalization
+```{r}
+nlas_wrong <- las - dtm_tin
+plot(nlas_wrong, legend = TRUE)
+# it is wrong because it is not accurate at all
+# it shows many minus point
+
+nlas_right <- normalize_height(las, tin())
+plot(nlas_right, legend = TRUE)
+
+# final_filter
+nlas_right_filtered <- filter_poi(nlas_right, Z > 0, Z < 40)
+plot(nlas_right_filtered, legend=TRUE)
+```
+
+## DSM - Digital surface model
+```{r}
+dsm <- rasterize_canopy(las, res=1, algorithm = dsmtin())
+plot(dsm)
+
+chm_wrong <- dsm - dtm_tin
+plot(chm_wrong)
+
+chm_right <- rasterize_canopy(nlas_right_filtered, res=1, algorithm = dsmtin())
+plot(chm_right)
+
+writeRaster(chm_right, "Data/chm_right.tiff")
+```
+
+## tree detection and segementation
+```{r}
+tree_top_5 <- locate_trees(nlas_right_filtered, lmf(ws = 5)) # better use the nlas (normalised) rather than the las
+# tree detection with local maximum filter LMF
+# windows 5 x 5 m
+tree_top_5
+plot(tree_top_5)
+sf::st_write(tree_top_5, "Data/tree_top_5.shp", layer_options = "SHPT=POINTZ")
+
+
+tree_top_10 <- locate_trees(nlas_right_filtered, lmf(ws = 10)) 
+tree_top_10
+plot(tree_top_10)
+sf::st_write(tree_top_10, "Data/tree_top_10.shp", layer_options = "SHPT=POINTZ")
+
+# a function to decide 
+f <- function(x) {x * 0.1 + 3} #create a function that makes a mw that increase from 3 (whan height is 0) and increase of 0.1 for each meter. you can change the 0.1 and increas eto 0.2...
+heights <- seq(0,40,5)
+ws <- f(heights)
+plot(heights, ws, type = "l", ylim = c(0,6))
+
+tree_top_function_right<-locate_trees(nlas_right_filtered, lmf(f)) # the function adjust the ws based on tree heights
+st_write(tree_top_function_right, "Data/tree_top_function.shp", delete_layer = TRUE, layer_options = "SHPT=POINTZ")
+```
+
+## Exercise
+```{r}
+#exercise 6
+#normalize the las2 using the tin() algorithm. 
+las2
+nlas2 <- normalize_height(las2, tin())
+plot(nlas2, legend = TRUE)
+
+#filter the points as done before. 
+plot(nlas2@data$X, nlas2@data$Y, col=nlas2@data$Classification)
+plot(nlas2@data$X, nlas2@data$Z, col=nlas2@data$Classification)
+nlas2_filtered <- filter_poi(nlas2, Z > 0, Z < 45)
+plot(nlas2_filtered, legend=TRUE)
+plot(nlas2_filtered@data$X, nlas2_filtered@data$Z, col=nlas2_filtered@data$Classification)
+
+#exercise 7
+#create a 2 new CHM with the area2 with a spatial resolution of 2m. one using the dsmtin() and the other using the p2r(subcircle = 0.2,na.fill = tin() ) #exercise 8
+chm_right2 <- rasterize_canopy(nlas2_filtered, res=2, algorithm = dsmtin())
+plot(chm_right2)
+
+writeRaster(chm_right2, "Data/chm_right2.tiff")
+
+chm_right2.2 <- rasterize_canopy(nlas2_filtered, res=2, algorithm = p2r(subcircle = .2, na.fill = tin()))
+plot(chm_right2.2)
+
+writeRaster(chm_right2.2, "Data/chm_right2.2.tiff")
+
+
+#load the area2
+#create a nlas_filtered (with filter 0, 45) in the area 2
+#locate trees using  the f function setting height seq(0,45,5)
+
+# a function to decide 
+f <- function(x) {x * 0.1 + 3} #create a function that makes a mw that increase from 3 (whan height is 0) and increase of 0.1 for each meter. you can change the 0.1 and increas eto 0.2...
+heights <- seq(0,45,5)
+ws <- f(heights)
+plot(heights, ws, type = "l", ylim = c(0,8))
+
+tree_top_function_right2.2 <- locate_trees(nlas2_filtered, lmf(f)) # the function adjust the ws based on tree heights
+
+st_write(tree_top_function_right2.2, "Data/tree_top_function_las2.2.shp", delete_layer = TRUE, layer_options = "SHPT=POINTZ")
+
+```
+
+## tree segmentation
+```{r}
+# @Dalponte2016: CHM + function to detect tree tops
+# @Li2012: No CHM needed - 3D geometric clustering
+# chm_right <- rasterize_canopy(nlas_right_filtered, res=1, algorithm = dsmtin())
+#tree_top_function_right<-locate_trees(nlas_right_filtered, lmf(f))
+algorithms1 <- dalponte2016(chm_right, tree_top_function_right)
+trees_segmented_dalponte <- segment_trees(nlas_right_filtered, algorithms1)
+plot(trees_segmented_dalponte, color="treeID")
+
+plot(trees_segmented_dalponte@data$X, trees_segmented_dalponte@data$Y, col=trees_segmented_dalponte@data$treeID)
+
+# selecting one single tree
+tree1<-filter_poi(trees_segmented_dalponte, treeID==120)
+plot(tree1@data$X, tree1@data$Y, col=tree1@data$Classification)
+
+#Li2012
+algorithms2 <- li2012()
+trees_segmented_li2012 <- segment_trees(nlas_right_filtered, algorithms2)
+plot(trees_segmented_li2012, color="treeID")
+
+plot(trees_segmented_li2012@data$X, trees_segmented_li2012@data$Y, col=trees_segmented_li2012@data$treeID)
+```
+
+## crown metric and shape
+```{r}
+crown_dalponte <- crown_metrics(trees_segmented_dalponte, func = .stdtreemetrics, geom = "convex")
+# convex: more linear; concave: more rough
+st_write(crown_dalponte, "Data/crown_dalponte.shp")
+# cnvhll is the area of the crown in meter2
+```
+
+
+```{r}
+crown_dalponte_all_metrics <- crown_metrics(trees_segmented_dalponte, func = .stdmetrics_z, geom = "convex")
+# all metrics are extracted
+crown_dalponte_all_metrics
+# zmax: highest point
+# z: refers to the elevation
+# i: intensity
+# rn: return number
+# q: quantile
+# a: ScanAngleRank or ScanAngle
+# n: count
+# p: percentage
+# random forests can be powerful to classify images
+
+# get information from a single point
+# tree level matrix
+test_points <- st_read("punctual_plot.shp")
+metric_plot <- plot_metrics(nlas_right_filtered, func = .stdmetrics_z, radius=20, test_points)
+
+# volume
+crown_dalponte_new <- crown_metrics(trees_segmented_dalponte, func = .stdmetrics_z, geom="concave")
+
+crown_dalponte_new$volume <- 0.5*(crown_dalponte_new$zmax^2.5)/100 
+# use with caution! 
+# Some sources suggest values between .03 and .07 depending on species.
+
+plot(crown_dalponte_new)
+plot(crown_dalponte_new["volume"])
+
+# volume at pixel level
+crown_dalponte_new <- pixel_metrics(trees_segmented_dalponte, func = .stdmetrics_z, 5) # 5 meter resolution
+crown_dalponte_new$volume <- .5*(crown_dalponte_new$zmax^2.5)/100
+plot(crown_dalponte_new)
+plot(crown_dalponte_new["volume"])
+```
+
+
+## segment trees by only CHM
+## tree location using a CHM and not a point cloud
+```{r}
+chm_right <- rasterize_canopy(nlas_right_filtered, res=1, algorithm = dsmtin())
+tree_top_chm <- locate_trees(chm_right, lmf(f))
+agorithm_tree_by_chm <- dalponte2016(chm_right, tree_top_chm)
+crowns <- agorithm_tree_by_chm()
+plot(crowns, col = pastel.colors(2200))
+# raster shape file
+```
+
+
+
+## ctg
+```{r}
+# starting from 01:03:00
+# https://app.slack.com/client/T08V13QPH1U/C08V8HC4T60
+# https://us02web.zoom.us/rec/play/KNI5VI5rRX-c0M1OvuuzphFoV7gRadI3WO4ibh3es8kCzObO4vSWugS8Ci-1f3vus-DA9yLBx9_qhM0.QSUpvIKMuCrBMMUa?eagerLoadZvaPages=sidemenu.billing.plan_management&accessLevel=meeting&canPlayFromShare=true&from=share_recording_detail&continueMode=true&componentName=rec-play&originRequestUrl=https%3A%2F%2Fus02web.zoom.us%2Frec%2Fshare%2F2aEzfAh2DFLVL43ZZnS134OrpNC1RfFU4dAGEzldrIxE6hjwUREga67uOlcKrqpQ.BupiWFprSNaNccW_
+
+#ctg
+ctg <- readLAScatalog("ctg")
+crs(ctg) <- "EPSG:25832" #reference system
+plot(ctg)
+
+#create the following folders: dtm, nlas, chm, chm2,nlas_segmented, segmented
+
+#2.dtm
+#tin
+opt_output_files(ctg) <- paste0("ctg/{*}_dtm") # set folder output
+ctg_dtm <- rasterize_terrain(ctg, res = 5, algorithm = tin(), overwrite=TRUE) # normalize
+
+#3.create nlas
+opt_output_files(ctg) <- paste0("ctg/nlas/", "/{*}_nlas") # set folder output
+ctg_nlas <- normalize_height(ctg, tin())
+
+#4. create CHM
+ctg_nlas <- readLAScatalog("ctg/nlas")
+opt_output_files(ctg_nlas) <- paste0("ctg/chm/", "/{*}_chm") # settare cartella output
+crs(ctg_nlas) <- "EPSG:25832"
+#ctg_nlas <- catalog_filter(ctg_nlas, ~Z > 0)
+ctg_chm <- rasterize_canopy(ctg_nlas, res = 1, algorithm = dsmtin())
+
+
+#5.locate trees
+f <- function(x) {pmax((x * 0.1 + 3), 1)} #funzione incrementale
+heights <- seq(0,40,5)
+ws <- f(heights)
+crs(ctg_nlas) <- "EPSG:25832"
+opt_output_files(ctg_nlas) <- paste0("ctg/chm/", "/{*}_ttops") # set folder output
+ctg_ttops_function <- locate_trees(ctg_nlas, lmf(f))
+
+#6.tree segmentation and tree metric in one file
+opt_output_files(ctg_nlas) <- paste0("ctg/chm2", "/chm_{*}") #set folder output
+chm <- rasterize_canopy(ctg_nlas, 1, dsmtin())
+opt_output_files(ctg_nlas) <- ""
+ttops <- locate_trees(ctg_nlas, lmf(f), uniqueness = "bitmerge")
+opt_output_files(ctg_nlas) <- paste0("ctg/nlas_segmented", "/{*}_segmented") #set folder output
+# check duplicated ID
+ttops[duplicated(ttops$treeID), ]
+ttops <- ttops[!duplicated(ttops$treeID), ]
+algo <- dalponte2016(chm, ttops)
+ctg_segmented <- segment_trees(ctg_nlas, algo)
+
+#
+ctg_nlas_seg <- readLAScatalog("ctg/nlas_segmented")
+opt_output_files(ctg_nlas) <- paste0("ctg/segmented", "/{*}_segmented") #set folder output
+crowns_dalponte <- crown_metrics(ctg_nlas_seg, func = .stdmetrics_z, geom = "convex")
+st_crs(crowns_dalponte) <- 25832
+#settare cartella output
+st_write(
+  crowns_dalponte,
+  "ctg/segmented/trees_crown_and_metrics.shp",
+  delete_layer = TRUE
+)
+
+#7. metrics in one file
+#at raster level
+#list.files("ctg")
+ctg_nlas_seg <- readLAScatalog("ctg/nlas_segmented")
+stmetric_pixel <- pixel_metrics(ctg_nlas_seg, func = .stdmetrics_z, 10) # calculate all the z metrics at 10 m
+crs(stmetric_pixel) <- "EPSG:25832"
+#settare cartella output
+writeRaster(stmetric_pixel, "ctg/metrics/metriche_z_raster.tiff")
+```
+
+
+## gedi data
+```{r}
+# google earth engine code for the download of gedi global chm (potapov 30m, lang10m, meta1m):  // =======================
+#// 1. Define AOI: draw or use a fixed polygon
+#// =======================
+#// You can also use Map.drawingTools() to draw it interactively
+#var aoi = geometry;
+#Map.centerObject(aoi, 13);
+#// =======================
+#// 2. Load Lang et al. CHM (10m)
+#// =======================
+var langCHM = ee.Image('users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1') .clip(aoi);
+
+Map.addLayer(langCHM, {min: 0, max: 50, palette: ['white', 'green', 'darkgreen']}, 'Lang CHM (10m)');
+
+# 3. Load Potapov et al. CHM (GEDI V2.7) (30m)
+
+var potapovCHM = ee.ImageCollection('users/potapovpeter/GEDI_V27')
+                    .mosaic()
+                    .clip(aoi);
+Map.addLayer(potapovCHM, {min: 0, max: 50, palette: ['white', 'orange', 'brown']}, 'Potapov CHM (30m)');
+// =======================
+// 4. Load Meta CHM (1m) if available
+// =======================
+var metaCHM = ee.ImageCollection("projects/meta-forest-monitoring-okw37/assets/CanopyHeight")
+                .filterBounds(aoi)
+                .mosaic()
+                .clip(aoi);
+Map.addLayer(metaCHM, {min: 0, max: 50, palette: ['white', 'blue', 'purple']}, 'Meta CHM (1m)');
+// =======================
+// 5. Export to Google Drive
+// =======================
+// Lang export (10 m)
+Export.image.toDrive({
+  image: langCHM,
+  description: 'Lang_CHM_10m',
+  folder: 'GEE_exports',
+  region: aoi,
+  scale: 10,
+  maxPixels: 1e13
+});
+// Potapov export (30 m)
+Export.image.toDrive({
+  image: potapovCHM,
+  description: 'Potapov_CHM_30m',
+  folder: 'GEE_exports',
+  region: aoi,
+  scale: 30,
+  maxPixels: 1e13
+});
+// Meta export (1 m)
+Export.image.toDrive({
+  image: metaCHM,
+  description: 'Meta_CHM_1m',
+  folder: 'GEE_exports',
+  region: aoi,
+  scale: 1,
+  maxPixels: 1e13
+});
+```
+
+
+## Older codes
+## The LidR
+```{r}
+dev.new()
+rgl::rgl.open()
+dev.off()
+LASfile <- system.file("extdata", "Topography.laz", package="lidR")
+las <- readLAS(LASfile, select = "xyzc")
+# plot(las, size = 3, bg = "white")
+plot(las@data$X, las@data$Y, col = las@data$Z, pch = 20)
+
+dtm_tin <- rasterize_terrain(las, res = 1, algorithm = tin())
+plot_dtm3d(dtm_tin, bg = "white") 
+
+gnd <- filter_ground(las)
+plot(gnd, size = 3, bg = "white", color="Classification")
+
+dtm <- rasterize_terrain(las, 1, knnidw())
+plot(dtm, col = gray(1:50/50))
+
+# normalization point cloud by - surface
+nlas <- las - dtm
+plot(nlas, size = 4, bg = "white")
+
+hist(filter_ground(nlas)$Z, breaks = seq(-0.6, 0.6, 0.01), main = "", xlab = "Elevation")
+```
+
+```{r}
+chm <- rasterize_canopy(las, res = 3, algorithm = p2r())
+col <- height.colors(25)
+plot(chm, col = col)
+
+LASfile <- system.file("extdata", "Topography.laz", package = "lidR")
+las2 <- readLAS(LASfile)
+las2 <- normalize_height(las2, algorithm = tin())
+plot(las2, size = 3, bg = "white")
+chm <- rasterize_canopy(las2, res = 0.5, algorithm = dsmtin())
+plot(chm, col = col)
+
+chm <- rasterize_canopy(las2, res = .5, algorithm = dsmtin(max_edge = 8))
+plot(chm, col = col)
+```
+
+```{r}
+# Individual tree detection and segementation
+LASfile <- system.file("extdata", "MixedConifer.laz", package="lidR")
+las <- readLAS(LASfile, select = "xyzr", filter = "-drop_z_below 0")
+chm <- rasterize_canopy(las, 0.5, pitfree(subcircle = 0.2))
+plot(las, bg = "white", size = 4)
+plot(las@data$X, las@data$Y, col = las@data$Z, pch = 20)
+
+# local maximum filter with fixed window size
+ttops <- locate_trees(las, lmf(ws = 5))
+
+plot(chm, col = height.colors(50))
+plot(sf::st_geometry(ttops), add = TRUE, pch = 3)
+
+x <- plot(las, bg = "white", size = 4)
+add_treetops3d(x, ttops)
+
+```
+
+```{r}
+# derived matrics at the tree level
+LASfile <- system.file("extdata", "MixedConifer.laz", package="lidR") 
+las <- readLAS(LASfile, filter = "-drop_z_below 0") # read the file
+metrics <- crown_metrics(las, ~list(z_max = max(Z), z_mean = mean(Z))) # calculate tree metrics
+head(metrics)
+
+plot(metrics["z_max"], pal = hcl.colors, pch = 19) # plot using z_max
+
+custom_crown_metrics <- function(z, i) { # user-defined function
+  metrics <- list(
+     z_max = max(z),   # max height
+     z_sd = sd(z),     # vertical variability of points
+     i_mean = mean(i), # mean intensity
+     i_max  = max(i)   # max intensity
+   )
+   return(metrics) # output
+}
+
+ccm = ~custom_crown_metrics(z = Z, i = Intensity)
+
+metrics <- crown_metrics(las, func = ccm, geom = "convex")
+plot(metrics["z_max"], pal = hcl.colors)
+
+metrics <- crown_metrics(las, func = ccm, geom = "concave")
+plot(metrics["z_max"], pal = hcl.colors)
+```
+
+
+## 
+
