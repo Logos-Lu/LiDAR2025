@@ -1,5 +1,5 @@
 ---
-title: "LiDAR_01"
+title: "LiDAR data analysis in R "
 author: "Jing-Zhong Lu"
 date: "2025-06-10"
 output: html_document
@@ -9,7 +9,6 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 #library(rgdal)
 library(lidR)
 library(viridis)
@@ -487,6 +486,16 @@ stmetric_pixel <- pixel_metrics(ctg_nlas_seg, func = .stdmetrics_z, 10) # calcul
 crs(stmetric_pixel) <- "EPSG:25832"
 #settare cartella output
 writeRaster(stmetric_pixel, "ctg/metrics/metriche_z_raster.tiff")
+```
+
+
+## ctg250
+```{r}
+opt_output_files(ctg) <- paste0("ctg250/tite_{XLEFT}_{YBOTTOM}")
+opt_chunk_buffer(ctg) <- 0
+opt_chunk_size(ctg) <- 250
+small <- catalog_retile(ctg)
+plot(small)
 ```
 
 
