@@ -46,6 +46,7 @@ plot(las)
 plot(las@data$X, las@data$Y, col = las@data$Z, pch = 20)
 
 las_check(las) # 1 points are duplicated, which is not bad
+las@data$Z %>% summary
 
 las <- readLAS("las_area1.laz", filter = "-drop_z_above 900")
 
@@ -70,22 +71,22 @@ las@data %>% str
 # exercise 2
 #1. reading the point cloud
 #read LAS point cloud
-las<-readLAS("las_area2.laz")
-las#plot the point cloud
-plot(las)#read only x,y,z
+las2 <- readLAS("las_area2.laz")
+las2#plot the point cloud
+plot(las2)#read only x,y,z
 # density: 4.76 pulses/m²  Pulse density (or "pulse rate") This is the number of laser pulses emitted per square meter.Pulses = quanti colpi sparo
 # 8.87 points/m² number of LiDAR returns (points) per square meter. Points = quanti rimbalzi ricevo
 
-las_check(las) #check if the point cloud is fine
+las_check(las2) #check if the point cloud is fine
 
 #2.1 plot the point cloud
-plot(las, bg="white")
-plot(las, color="RGB")#if you have structrue from motion data you can plot in RGB
-plot(las, color="Classification", bg="white", legend=TRUE )#plot specific information of the point cloud e.g. classification 
-plot(las, color="Intensity", bg="white", legend=TRUE ) #plot intensity
+plot(las2, bg="white")
+plot(las2, color="Classification", bg="white", legend=TRUE )#plot specific information of the point cloud e.g. classification 
+plot(las2, color="Intensity", bg="white", legend=TRUE ) #plot intensity
 
-plot(las@data$X, las@data$Y, col = las@data$Z, pch = 20)
+plot(las2@data$X, las2@data$Y, col = las2@data$Z, pch = 20)
 ```
+
 
 ```{r}
 #exercise 1
@@ -95,19 +96,19 @@ plot(las@data$X, las@data$Y, col = las@data$Z, pch = 20)
 #check if the point cloud is fine
 #re-load the point cloud and plot it using only points below  1750
 #plot specific information of the point cloud of the area above 1900m: try to plot the number of returns - never done but you can try! do it with a blue background and adding a legend 
-las2<-readLAS("C:/Users/MicTorresani/OneDrive - Scientific Network South Tyrol/varie/corsi/physalia/LiDAR 2025/data/starting_data/las/area2/DownloadService/las_area2.laz")
+las2<-readLAS("las_area2.laz")
 plot(las2)
 las_check(las2)
-las2<-readLAS("C:/Users/MicTorresani/OneDrive - Scientific Network South Tyrol/varie/corsi/physalia/LiDAR 2025/data/starting_data/las/area2/DownloadService/las_area2.laz",filter = "-drop_z_above 1750" ) 
+las2<-readLAS("las_area2.laz",filter = "-drop_z_above 1750" ) 
 plot(las2)
-las2<-readLAS("C:/Users/MicTorresani/OneDrive - Scientific Network South Tyrol/varie/corsi/physalia/LiDAR 2025/data/starting_data/las/area2/DownloadService/las_area2.laz",filter = "-drop_z_below 1900" ) 
+las2<-readLAS("las_area2.laz",filter = "-drop_z_below 1900" ) 
 plot(las2, color="ReturnNumber", bg="blue", legend=TRUE )
 ```
 
 
 ```{r}
 #open Qgis
-las<-readLAS("las_area1.laz")
+las <- readLAS("las_area1.laz")
 p1 <- c(679368, 5155974)
 p2 <- c(679468, 5156074)
 transect<-clip_transect(las, p1, p2, width = 5) #plot point cloud transect; width in meters
@@ -122,13 +123,13 @@ plot(las)
 ```
 
 
-## Homework2
+
 ```{r}
-###
+## Homework2
 #exercise 2 to do at home
 #create a transect with the new las2
 #show the Classification of a two given points of transect of 10m
-las2<-readLAS("las_area2.laz" ) 
+las2 <- readLAS("las_area2.laz" ) 
 p1 <- c(620207, 5156764)
 p2 <- c(620257, 5156764)
 transect<-clip_transect(las2, p1, p2, width = 5) #plot point cloud transect
@@ -141,18 +142,17 @@ ggplot(payload(transect), aes(X,Z, color=Z  ) )+
 
 ## 2.2 plot clipped areas, circles 
 ```{r}
-area_test<-st_read("area_shp_test.shp")
+area_test<-st_read("Data/area_shp_test.shp")
 
 plot(area_test)
 clipped_las <- clip_roi(las, area_test)
 plot(clipped_las)#clip my las with given gps point and given radius
-plot(clipped_las@data$X, clipped_las@data$Y, col = clipped_las@data$Z, pch = 20)
 
 area_circle<-clip_circle(las, x=679368, y=5155974, radius = 50)
 p1 <- c(679368, 5155974)
 p2 <- c(679468, 5156074)
 area_circle<-clip_circle(las, x=p1[1], y=p1[2], radius = 40)
-#plot(area_circle)
+plot(area_circle)
 plot(area_circle@data$X, area_circle@data$Y, col = area_circle@data$Z, pch = 20)
 ```
 
@@ -170,7 +170,6 @@ ggplot(payload(transect), aes(X,Z, color=Classification  ) )+
   ggtitle("pmf")+
   theme_minimal()+
   scale_color_viridis_c(option="viridis")
-
 
 ws<-seq(3, 12, 3)
 ws
@@ -197,13 +196,14 @@ ggplot(payload(transect), aes(X, Z, color=Classification  ) )+
   scale_color_viridis_c(option="viridis")
 ```
 
+
 ## DTM - terrain model
 Important for data normalisation
-
 ```{r}
 ground <- filter_ground(las)
 str(ground@data)
-plot(ground@data$X, ground@data$Y, col=ground@data$NumberOfReturns, pch=20)
+plot(ground)
+#plot(ground@data$X, ground@data$Y, col=ground@data$NumberOfReturns, pch=20)
 
 dtm_tin <- rasterize_terrain(las, res = 1, algorithm = tin()) # res in meters | Michele the tutor knows more than five points per m2. 
 # DTM generation: Triangular irregular network; recommended (for forestry)
@@ -230,6 +230,8 @@ plot(dtm_idw)
 # export to QGIS
 raster::writeRaster(dtm_idw, "Data/dtm_idw.tiff")
 
+# slope: steepness or incline of the terrain
+# aspect: compass direction that a slope faces; 0 = north, 90 = east, 180 = south
 dtm_products <- terrain(dtm_tin, v = c("slope", "aspect"), unit = "degree")
 plot(dtm_products)
 raster::writeRaster(dtm_products$slope, "Data/slope.tiff")
@@ -302,7 +304,6 @@ plot(nlas2@data$X, nlas2@data$Y, col=nlas2@data$Classification)
 plot(nlas2@data$X, nlas2@data$Z, col=nlas2@data$Classification)
 nlas2_filtered <- filter_poi(nlas2, Z > 0, Z < 45)
 plot(nlas2_filtered, legend=TRUE)
-plot(nlas2_filtered@data$X, nlas2_filtered@data$Z, col=nlas2_filtered@data$Classification)
 
 #exercise 7
 #create a 2 new CHM with the area2 with a spatial resolution of 2m. one using the dsmtin() and the other using the p2r(subcircle = 0.2,na.fill = tin() ) #exercise 8
@@ -382,7 +383,7 @@ crown_dalponte_all_metrics
 
 # get information from a single point
 # tree level matrix
-test_points <- st_read("punctual_plot.shp")
+test_points <- st_read("Data/punctual_plot.shp")
 metric_plot <- plot_metrics(nlas_right_filtered, func = .stdmetrics_z, radius=20, test_points)
 
 # volume
@@ -415,8 +416,8 @@ plot(crowns, col = pastel.colors(2200))
 ```
 
 
-
 ## ctg
+this is useful for processing many .laz file
 ```{r}
 # starting from 01:03:00
 # https://app.slack.com/client/T08V13QPH1U/C08V8HC4T60
@@ -500,6 +501,7 @@ plot(small)
 
 
 ## Heterogeneity
+rao's Q is written by Michele
 ```{r}
 # biodiversity
 chm_right <- rasterize_canopy(nlas_right_filtered, res = 20, algorithm = dsmtin())
@@ -519,11 +521,11 @@ sd_val <- sd(mat_values_clean, na.rm = TRUE)
 
 # coefficient of variation
 cv_val <- (sd_val / mean_val) * 100
-
 ```
 
 
 ## gedi data
+this is yet to checked in Google Earth Engine
 ```{r}
 # google earth engine code for the download of gedi global chm (potapov 30m, lang10m, meta1m):  // =======================
 #// 1. Define AOI: draw or use a fixed polygon
@@ -585,7 +587,7 @@ Export.image.toDrive({
 ```
 
 
-## Older codes
+## Older codes from LiDAR book
 ## The LidR
 ```{r}
 dev.new()
@@ -676,5 +678,5 @@ plot(metrics["z_max"], pal = hcl.colors)
 ```
 
 
-## 
+
 
