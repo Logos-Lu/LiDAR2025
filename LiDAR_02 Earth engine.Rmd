@@ -1,0 +1,31 @@
+---
+title: "LiDAR_02 Earth engine"
+author: "Jing-Zhong Lu"
+date: "2025-06-11"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rgee)
+#reticulate::conda_list()
+# Set the Python environment to the one you already have
+# ee_install_set_pyenv(py_env = "r-reticulate", py_path = "/Users/logos/opt/anaconda3/envs/r-reticulate/bin/python")
+# ee_install_upgrade()
+# ee_clean_pyenv()
+# ee_install(py_env = "rgee")
+
+# Initialize earth engine
+ee_Initialize()
+```
+
+## Data
+```{r}
+# Load the dataset
+canopy_height <- ee$Image("NASA/JPL/global_forest_canopy_height_2005")
+
+
+```
+
