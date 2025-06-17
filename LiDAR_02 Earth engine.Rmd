@@ -29,3 +29,43 @@ canopy_height <- ee$Image("NASA/JPL/global_forest_canopy_height_2005")
 
 ```
 
+
+## GEDI data
+```{r}
+# earthdata: logosgo; password
+#install.packages('rGEDI', repos = c('https://carlos-alberto-silva.r-universe.dev', 'https://cloud.r-project.org'))
+library(rGEDI)
+
+# find GEDI data [upper left; lower right]
+ul_lat<- 51.54
+lr_lat<- 51.51
+ul_lon<- 9.93
+lr_lon<- 9.99
+
+# Specifying the date range
+daterange=c("2019-07-01","2020-05-22")
+
+gLevel2A <- gedifinder(product="GEDI02_A",ul_lat, ul_lon, lr_lat, lr_lon,version="002",daterange=daterange)
+
+# Set output dir for downloading the files
+outdir=getwd()
+
+# Downloading GEDI data
+#gediDownload(filepath=gLevel1B,outdir=outdir)
+gediDownload(filepath=gLevel2A,outdir=outdir)
+#gediDownload(filepath=gLevel2B,outdir=outdir)
+
+#######
+# Herein, we are using only a GEDI sample dataset for this tutorial.
+#######
+# downloading zip file
+download.file("https://github.com/carlos-alberto-silva/rGEDI/releases/download/datasets/examples.zip",destfile=file.path(outdir, "examples.zip"))
+
+# unzip file 
+unzip(file.path(outdir,"examples.zip"))
+```
+
+
+
+
+
